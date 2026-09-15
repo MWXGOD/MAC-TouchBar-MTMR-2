@@ -1,0 +1,57 @@
+[
+  {
+    "type": "staticButton",
+    "title": "◀︎",
+    "width": 38,
+    "bordered": false,
+    "align": "left",
+    "actions": [
+      {
+        "trigger": "singleTap",
+        "action": "shellScript",
+        "executablePath": "__PROJECT_DIR__/build/touchbar-media-command",
+        "shellArguments": ["previous"]
+      }
+    ]
+  },
+  {
+    "type": "staticButton",
+    "title": "⏯︎",
+    "width": 38,
+    "bordered": false,
+    "align": "left",
+    "actions": [
+      {
+        "trigger": "singleTap",
+        "action": "shellScript",
+        "executablePath": "__PROJECT_DIR__/build/touchbar-media-command",
+        "shellArguments": ["toggle"]
+      }
+    ]
+  },
+  {
+    "type": "staticButton",
+    "title": "▶︎",
+    "width": 38,
+    "bordered": false,
+    "align": "left",
+    "actions": [
+      {
+        "trigger": "singleTap",
+        "action": "shellScript",
+        "executablePath": "__PROJECT_DIR__/build/touchbar-media-command",
+        "shellArguments": ["next"]
+      }
+    ]
+  },
+  {
+    "type": "shellScriptTitledButton",
+    "width": 520,
+    "refreshInterval": 0.05,
+    "source": {
+      "inline": "display_file=\"$HOME/Library/Application Support/TouchBarLyrics-MTMR-2/display.txt\"; if [ -s \"$display_file\" ]; then IFS= read -r lyric_line < \"$display_file\" || true; printf '%s' \"$lyric_line\"; fi; exit 0"
+    },
+    "bordered": false,
+    "align": "center"
+  }
+]
