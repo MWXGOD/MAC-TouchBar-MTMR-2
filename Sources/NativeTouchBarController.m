@@ -21,6 +21,7 @@ static NSTouchBarItemIdentifier const kPreviousIdentifier = @"com.ahs.mtmr2.prev
 static NSTouchBarItemIdentifier const kToggleIdentifier = @"com.ahs.mtmr2.toggle";
 static NSTouchBarItemIdentifier const kNextIdentifier = @"com.ahs.mtmr2.next";
 static NSTouchBarItemIdentifier const kLyricsIdentifier = @"com.ahs.mtmr2.lyrics";
+static NSString *const kScreenSyncPreference = @"MTMRScreenTouchBarSyncEnabled";
 
 @interface MTMRTouchBarButton : NSButton
 @property(nonatomic, assign, getter=isPressed) BOOL pressed;
@@ -124,6 +125,9 @@ static NSTouchBarItemIdentifier const kLyricsIdentifier = @"com.ahs.mtmr2.lyrics
 @property(nonatomic, strong) MTMRLyricsView *lyricsField;
 @property(nonatomic, strong) NSTimer *lyricsTimer;
 @property(nonatomic, strong) NSStatusItem *statusItem;
+@property(nonatomic, strong) NSMenuItem *screenSyncMenuItem;
+@property(nonatomic, assign) BOOL screenSyncEnabled;
+@property(nonatomic, assign) BOOL screensSleeping;
 @end
 
 @implementation MTMRAppDelegate
@@ -131,8 +135,12 @@ static NSTouchBarItemIdentifier const kLyricsIdentifier = @"com.ahs.mtmr2.lyrics
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
     DFRSystemModalShowsCloseBoxWhenFrontMost(NO);
+    self.screenSyncEnabled = [[NSUserDefaults standardUserDefaults] objectForKey:kScreenSyncPreference] == nil
+        ? YES
+        : [[NSUserDefaults standardUserDefaults] boolForKey:kScreenSyncPreference];
     [self installStatusItem];
     [self installTouchBar];
+    [self installScreenSleepNotifications];
 }
 
 - (void)installStatusItem {
@@ -145,8 +153,63 @@ static NSTouchBarItemIdentifier const kLyricsIdentifier = @"com.ahs.mtmr2.lyrics
     self.statusItem.button.title = @"";
 
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@"MTMR-2"];
+    self.screenSyncMenuItem = [[NSMenuItem alloc]
+        initWithTitle:@"屏幕休眠时同步触控栏"
+               action:@selector(toggleScreenSync:)
+        keyEquivalent:@""];
+    self.screenSyncMenuItem.target = self;
+    self.screenSyncMenuItem.state = self.screenSyncEnabled ? NSControlStateValueOn : NSControlStateValueOff;
+    [menu addItem:self.screenSyncMenuItem];
+    [menu addItem:[NSMenuItem separatorItem]];
     [menu addItemWithTitle:@"退出 MTMR-2" action:@selector(terminate:) keyEquivalent:@"q"];
     self.statusItem.menu = menu;
+}
+
+- (void)installScreenSleepNotifications {
+    NSNotificationCenter *workspaceCenter = [NSWorkspace sharedWorkspace].notificationCenter;
+    [workspaceCenter addObserver:self
+                        selector:@selector(screensDidSleep:)
+                            name:NSWorkspaceScreensDidSleepNotification
+                          object:nil];
+    [workspaceCenter addObserver:self
+                        selector:@selector(screensDidWake:)
+                            name:NSWorkspaceScreensDidWakeNotification
+                          object:nil];
+}
+
+- (void)toggleScreenSync:(NSMenuItem *)sender {
+    self.screenSyncEnabled = !self.screenSyncEnabled;
+    [[NSUserDefaults standardUserDefaults] setBool:self.screenSyncEnabled forKey:kScreenSyncPreference];
+    sender.state = self.screenSyncEnabled ? NSControlStateValueOn : NSControlStateValueOff;
+    if (self.screenSyncEnabled && !self.screensSleeping) {
+        [self presentTouchBarIfNeeded];
+    }
+}
+
+- (void)screensDidSleep:(NSNotification *)notification {
+    (void)notification;
+    self.screensSleeping = YES;
+    if (self.screenSyncEnabled && self.touchBar) {
+        [NSTouchBar minimizeSystemModalTouchBar:self.touchBar];
+    }
+}
+
+- (void)screensDidWake:(NSNotification *)notification {
+    (void)notification;
+    self.screensSleeping = NO;
+    [self presentTouchBarIfNeeded];
+}
+
+- (void)presentTouchBarIfNeeded {
+    if (!self.screenSyncEnabled || self.screensSleeping || !self.touchBar) {
+        return;
+    }
+    [NSTouchBar presentSystemModalTouchBar:self.touchBar
+                  systemTrayItemIdentifier:kControlStripIdentifier];
+}
+
+- (void)dealloc {
+    [[NSWorkspace sharedWorkspace].notificationCenter removeObserver:self];
 }
 
 - (void)installTouchBar {

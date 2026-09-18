@@ -41,6 +41,11 @@ Grant Accessibility permission if macOS requests it. Start NetEase Cloud
 Music and play a song. The Touch Bar will show the centered lyric and the
 three media controls; the native Control Strip remains on the right.
 
+The menu-bar app includes `屏幕休眠时同步触控栏`. It is enabled by default:
+when the Mac display sleeps, the MTMR Touch Bar is minimized too; when the
+display wakes, the Touch Bar is restored. Click the menu item to disable this
+behavior. The choice is remembered for future launches.
+
 `install-mtmr-preset.sh` is optional. It installs the legacy MTMR preset and
 is not required when using the included native `MTMR-2.app`.
 

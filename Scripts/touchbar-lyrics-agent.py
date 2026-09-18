@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -19,9 +20,8 @@ DISPLAY = os.path.join(ROOT, "display.txt")
 STATE = os.path.join(ROOT, "state.json")
 CACHE = os.path.join(ROOT, "lyrics-cache.json")
 TIME_RE = re.compile(r"\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]")
-RENDER_INTERVAL = 0.05
+RENDER_INTERVAL = 0.02
 FALLBACK_INTERVAL = 1.0
-LYRICS_LEAD = 0.6
 
 
 def atomic_write(path, content):
@@ -73,6 +73,45 @@ def current_line(seconds, lines):
     return selected
 
 
+def match_key(value):
+    normalized = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    return "".join(character for character in normalized if character.isalnum())
+
+
+def playback_key(playback):
+    # Duration separates remasters, live recordings, and special editions that
+    # share the same title and artist metadata.
+    duration = number(playback.get("duration"))
+    duration_key = str(int(round(duration))) if duration > 0 else "unknown"
+    return "\x1f".join((playback["title"], playback["artist"], duration_key))
+
+
+def choose_song(songs, playback):
+    title_key = match_key(playback["title"])
+    artist_key = match_key(playback["artist"])
+    target_duration = number(playback.get("duration"))
+    ranked = []
+    for index, song in enumerate(songs):
+        name_exact = match_key(song.get("name")) == title_key
+        artists = [match_key(artist.get("name")) for artist in song.get("artists", [])]
+        artist_exact = not artist_key or artist_key in artists
+        song_duration = number(song.get("duration")) / 1000.0
+        duration_delta = (
+            abs(song_duration - target_duration)
+            if target_duration > 0 and song_duration > 0
+            else float("inf")
+        )
+        ranked.append((
+            0 if name_exact else 1,
+            0 if artist_exact else 1,
+            duration_delta,
+            index,
+            song,
+        ))
+    ranked.sort(key=lambda item: item[:-1])
+    return ranked[0][-1] if ranked else None
+
+
 class Agent:
     def __init__(self, helper):
         self.helper = helper
@@ -89,6 +128,8 @@ class Agent:
         self.last_raw_elapsed = None
         self.last_rate = 0.0
         self.last_progress_time = None
+        self.progress_anchor = None
+        self.progress_anchor_time = None
         self.latest_playback = None
         self.playback_lock = threading.Lock()
         self.event_serial = 0
@@ -155,8 +196,8 @@ class Agent:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
-                text=True,
-                bufsize=1,
+                text=False,
+                bufsize=0,
                 env=environment,
             )
             self.watcher_script = script
@@ -290,24 +331,26 @@ class Agent:
                 self.stop_event.wait(0.25)
 
     def progressed_playback(self, playback, serial):
-        """Advance from a monotonic clock between MediaRemote snapshots."""
+        """Use fresh MediaRemote anchors and only extrapolate between events."""
         now = time.monotonic()
-        key = playback["title"] + "\x1f" + playback["artist"]
+        key = playback_key(playback)
         raw_elapsed = max(0.0, playback["elapsed"])
         rate = max(0.0, playback["rate"])
 
         if serial != self.applied_event_serial:
-            if self.progress_key != key or self.last_progress_time is None:
-                self.progress = raw_elapsed
-            elif abs(raw_elapsed - self.progress) > 0.35:
-                # A seek or a genuine state correction should take effect immediately.
-                self.progress = raw_elapsed
+            # elapsedTimeNow is already projected to the time the adapter
+            # sampled MediaRemote. Re-anchoring every event prevents local
+            # clock error from accumulating over the length of a song.
+            self.progress_anchor = raw_elapsed
+            self.progress_anchor_time = now
             self.progress_key = key
             self.last_rate = rate
             self.applied_event_serial = serial
 
-        if self.last_progress_time is not None:
-            self.progress += max(0.0, now - self.last_progress_time) * self.last_rate
+        if self.progress_anchor is None or self.progress_anchor_time is None:
+            self.progress_anchor = raw_elapsed
+            self.progress_anchor_time = now
+        self.progress = self.progress_anchor + max(0.0, now - self.progress_anchor_time) * self.last_rate
         self.progress = min(max(self.progress, 0.0), max(playback["duration"], 0.0) or self.progress)
         self.last_progress_time = now
         self.last_raw_elapsed = raw_elapsed
@@ -334,14 +377,7 @@ class Agent:
         params = urllib.parse.urlencode({"type": "1", "limit": "10", "s": query})
         search = self.request_json("https://music.163.com/api/search/get/web?" + params)
         songs = ((search or {}).get("result") or {}).get("songs") or []
-        chosen = None
-        for song in songs:
-            name = str(song.get("name", "")).strip()
-            artists = [str(artist.get("name", "")).strip() for artist in song.get("artists", [])]
-            if name == playback["title"] and (not playback["artist"] or playback["artist"] in artists):
-                chosen = song
-                break
-        chosen = chosen or (songs[0] if songs else None)
+        chosen = choose_song(songs, playback)
         if not chosen or not chosen.get("id"):
             return []
         lyric_json = self.request_json("https://music.163.com/api/song/lyric?" + urllib.parse.urlencode({"id": chosen["id"], "lv": 1, "kv": 1, "tv": -1}))
@@ -386,11 +422,13 @@ class Agent:
             self.last_raw_elapsed = None
             self.last_rate = 0.0
             self.last_progress_time = None
+            self.progress_anchor = None
+            self.progress_anchor_time = None
             self.applied_event_serial = -1
             return
 
         playback = dict(playback)
-        key = playback["title"] + "\x1f" + playback["artist"]
+        key = playback_key(playback)
         if key != self.lyric_key:
             self.lyric_key = key
             with self.lyrics_lock:
@@ -404,9 +442,8 @@ class Agent:
                     args=(playback, key),
                     daemon=True,
                 ).start()
-        # Compensate for the display pipeline's small, consistent delay.
         # Keep an empty display while lyrics are unavailable; never expose an error string or title.
-        line = current_line(playback["elapsed"] + LYRICS_LEAD, self.lyrics) or ""
+        line = current_line(playback["elapsed"], self.lyrics) or ""
         if line != self.last_display:
             atomic_write(DISPLAY, line)
             self.last_display = line
