@@ -22,5 +22,9 @@
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>MTMR-2 需要控制网易云音乐，以响应 Touch Bar 的上一首、播放/暂停和下一首按钮。</string>
+  <key>NSAccessibilityUsageDescription</key>
+  <string>MTMR-2 需要辅助功能权限，以直接触发网易云音乐的 Touch Bar 媒体控制。</string>
 </dict>
 </plist>
