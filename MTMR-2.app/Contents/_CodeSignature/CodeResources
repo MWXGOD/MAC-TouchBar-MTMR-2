@@ -4,9 +4,33 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/hid-media-key</key>
+		<data>
+		iSX8wnxiD/9p6dDJ5DKfXrMocUM=
+		</data>
 		<key>Resources/mtmr-logo.png</key>
 		<data>
 		ylSEtzmWrsyntoiMcJw+u7PnIqs=
+		</data>
+		<key>Resources/netease-media-command.applescript</key>
+		<data>
+		uOGsAVJFpDRcKYRc4j/OvGql2R8=
+		</data>
+		<key>Resources/netease-touchbar/TouchBarLast.png</key>
+		<data>
+		0CVc5k+vSyObpTB7WiYQyiZT24I=
+		</data>
+		<key>Resources/netease-touchbar/TouchBarNext.png</key>
+		<data>
+		xoriVcsDbF8TSY6eDTTrEfE59Hg=
+		</data>
+		<key>Resources/netease-touchbar/TouchBarPause.png</key>
+		<data>
+		BBjcjAX8jGKjVBQHct0nsxMQWw0=
+		</data>
+		<key>Resources/netease-touchbar/TouchBarPlay.png</key>
+		<data>
+		SpAmIcdWmPqgGGIZWmDxzDG5YP4=
 		</data>
 		<key>Resources/touchbar-media-command</key>
 		<data>
@@ -15,11 +39,53 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>Resources/hid-media-key</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			SSKFNyTCiJELmUlUh3waGEIEnYNI/U6KstYaOM7GaP4=
+			</data>
+		</dict>
 		<key>Resources/mtmr-logo.png</key>
 		<dict>
 			<key>hash2</key>
 			<data>
 			QZ6EffBqVnx3J+4pjkVG8UXc84bizEra7aO/QbMy81o=
+			</data>
+		</dict>
+		<key>Resources/netease-media-command.applescript</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			qeThWhkapfOsNHcSV/OiBjnM+HUfNrV/8JsuPYVForQ=
+			</data>
+		</dict>
+		<key>Resources/netease-touchbar/TouchBarLast.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			knhOuZmoVjSlyyTKOG9IudHgbqbQDghiV86FlTRjmwU=
+			</data>
+		</dict>
+		<key>Resources/netease-touchbar/TouchBarNext.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			fgjeJ8P1QSU7tplkLP4pgKy2DMVgjV9mRD8tDJUQF6s=
+			</data>
+		</dict>
+		<key>Resources/netease-touchbar/TouchBarPause.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			gRMXRfUQ+f357rSzmwenoxcLOn/apdrrTHQcmKOOxqU=
+			</data>
+		</dict>
+		<key>Resources/netease-touchbar/TouchBarPlay.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			GHDWUW+AUEtEYH1drwSFOGRJv3966r3HfErHIpFGkGk=
 			</data>
 		</dict>
 		<key>Resources/touchbar-media-command</key>
